@@ -1,0 +1,674 @@
+---
+title: "Case Fatality Rate of COVID-19 in U.S.A"
+author: "Estrada Leonardo"
+date: "2023-07-01"
+output:
+  html_document: 
+    theme: cosmo
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+![](THD_Logo.png) Mat. No.: 22209186
+
+E-mail:
+[leonardo.estrada-duenas\@stud.thd-deg.de](mailto:leonardo.estrada-duenas@stud.thd-deg.de){.email}
+
+# Overview
+
+## Summary
+
+From the beginning of 2020 a pandemic of unexpected magnitude hit the
+whole world. The COVID-19 pandemic began with a high case fatality rate,
+due to the inexperience against this disease. It was hard to fight back
+from a medical point of view, no available treatments were proven to
+work effectively. Some health and behavioraul policies helped to
+diminish the case, however, the efforts were not enough and the pandemic
+extended for over 2 years. COVID-19 affected different groups in a
+particular way, whether because of their gender or ethnic group, this
+disease was transmitted with more frequency or sadly the death rate was
+higher amongst certain population.
+
+**Keywords:** COVID-19, U.S.A. States, Biological Sex, Ethnic Group,
+Case Fatality Rate.
+
+
+# 1. Introduction
+
+Severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2), also know
+as COVID-19, is a virus that infects mammals and generates respiratory
+diseases, like pneumonia. This type of virus has become a threat to the
+human health decades ago. However, the COVID-19 virus posses a high
+transmission rate, which led to a global pandemic (Ben Hu, et al.,
+2021). In the United States, the COVID 19 pandemic began in January
+2020, the transmission spiked in during the first trimester of 2020.
+This virus variant was poorly characterized, which led to a poor
+diagnostic and treatment, generating a high rate of mortality (Pei, S et
+al., 2020). Project Tycho collected data from the pandemic in different
+demographic variables, this data set will allow to understand the virus
+death rate among different groups of persons.
+
+# 2. Problem Definition
+
+At the beginning of the pandemics, the COVID-19 virus was transmitted
+uncontrollably among everyone in every part of the world. In this early
+stage many people died due to the poor treatment options at that moment.
+Did the virus had a stronger impact on certain group of people? Due to
+different genetic characteristics we can assume a disease can have a
+stronger effect on certain people. Thus, an analysis of the impact of
+the virus can be performed to see if there is any relationship between
+the biological sex of a person or the race with the death rate.
+
+## 2.1 Problem
+
+Is there a relationship between biological sex and death rate of
+COVID-19? Is there a relationship between race and death rate of
+COVID-19?
+
+# 3. Objectives
+
+## 3.1 General
+
+The general objective of this research is to analyze data to correlate
+the mortality of COVID-19 with a race or biological sex characteristic,
+also, visualize the death rate by state, during the period of March 2020
+until July 2021.
+
+## 3.2 Specifics
+
+-   Clean the data set provided by Tycho, maintaining the variables
+    relevant for this study.
+-   Generate summary statistics to understand the values of each
+    variable in the dataset.
+-   Generate graphs to represent the data of the variables.
+-   Define if there is a relation between biological sex and death rate
+    of COVID-19 through statistical test Chi-square.
+-   Define if there is a relation between biological race and death rate
+    of COVID-19 through statistical test Chi-square.
+
+# 4. Methods and Analysis
+
+## R Libraries
+
+To begin, libraries are loaded into the script. Libraries contain the
+functions needed to manipulate and analyze the data. For the present
+report the following packages are loaded.
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+theme_set(theme_light(base_size = 10)) #The theme of the graphs is preselected for all the document.
+library(scales)
+library(usmap)
+library(incidence)
+library(ggridges)
+library(lubridate)
+```
+
+## Data Import
+
+The data set was obtained from Tycho Project - University of Pittsburgh,
+"Counts of COVID-19 reported in UNITED STATES OF AMERICA: 2019-2021". It
+is in a .csv file, which can be imported into R and modified for the
+purpose of the study
+
+```{r Dataset}
+US_Dataset <- read.csv("/Users/leonardo/Documents/LSI/2nd_Semester/Data Visualization/Exam_Valdes/US.840539006/US_840539006.csv")
+```
+
+## Data Shaping
+
+The relevant variables from the dataset can be selected by subsetting
+the original dataset. Also, the individual values that are missing or
+that are not relevant for the study are removed by row filtering. Here
+some values may be removed for specific graphs or statistical test. For
+example, the variable **DiagnosisCertainty** posses the **"NA"**
+category, which should be discarded for the present analysis, since we
+are only analyzing data which have certain cases of COVID-19.
+
+```{r Dataset_Clean, message=FALSE, warning=FALSE, cache=TRUE}
+US_Dataset <- US_Dataset %>%
+  select("Outcome", "Admin1Name", "PeriodStartDate", "PeriodEndDate", "BiologicalSex", "Race",  "DiagnosisCertainty") %>%
+  filter(DiagnosisCertainty != "NA") 
+```
+
+## Data Cleaning
+
+In this case, the following 7 variables are going to be used for the
+statistical analysis and graphics representations: "Outcome",
+"Admin1Name", "PeriodStartDate", "PeriodEndDate", "BiologicalSex",
+"Race" and "DiagnosisCertainty"
+
+We inspect the variables values, to understand which type of value it
+is, e.g. categorical or quantitative.
+
+```{r Data_cleaning, eval=FALSE, message=FALSE, warning=FALSE, cache=TRUE, include=FALSE}
+
+Outcome_values <- unique(US_Dataset$Outcome)
+print(Outcome_values)
+
+Admin1Name_values <- unique(US_Dataset$Admin1Name)
+print(Admin1Name_values)
+
+BiologicalSex_values <- unique(US_Dataset$BiologicalSex)
+print(BiologicalSex_values)
+
+Race_values <- unique(US_Dataset$Race)
+print(Race_values)
+
+DiagnosisCertainty_values <- unique(US_Dataset$DiagnosisCertainty)
+print(DiagnosisCertainty_values)
+
+```
+
+## Analysis
+
+A exploratory graphical analysis is performed between different
+variables. This will help to appreciate different tendencies of the
+data. To complement the graphs, a statistical analysis is performed,
+this will help to understand if there is any correlation between the
+variables.
+
+### 4.1 COVID CFR by Time
+
+First, we build a graph to see the **case fatality rate** of COVID-19
+through the period of 03.2020 until 07.2021.
+
+```{r CFR Time, message=FALSE, warning=FALSE, cache=TRUE}
+
+#1. The count of number of cases and deaths is generated
+
+Time_DeathR <- incidence(US_Dataset$PeriodEndDate, interval = "1 week", groups = US_Dataset$Outcome)
+
+
+Time_Death_Dates <- as.data.frame(Time_DeathR[["dates"]])
+Time_Death_Dates <- Time_Death_Dates  %>% 
+  rename (dates = 'Time_DeathR[["dates"]]')
+
+Time_Death_Counts <- as.data.frame(Time_DeathR[["counts"]])
+
+#2. The case fatality ratio is calculated 
+
+Time_Death_Ratio <- Time_Death_Counts %>%
+  mutate(Total_cases = Dead + Unspecified) %>%
+  mutate(death_ratio = (Dead / Total_cases)*1000)
+
+
+#3. A column graph is created to represent the value of case fatality rate by a weekly period. 
+D2C_ratio <- ggplot(data = Time_Death_Ratio, aes(x=Time_Death_Dates$dates, y=death_ratio))+
+  geom_col(aes(fill = death_ratio), width=7) +
+  scale_fill_viridis_c(direction = -1)+
+  scale_x_date(date_breaks = "2 months",
+               date_labels = "%b %Y") +
+  geom_line(size = 3.5, color = "white", aes(color = death_ratio)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
+  labs(y = "Case Fatality Rate x 1000 cases", 
+       x = "Time in weeks" , 
+       title= "Death to Case Ratio of COVID",
+       subtitle = "Weekly deaths caused by COVID on the period of 03.2020 to 07.2021")+
+  labs(fill = "CFR")+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"))
+  
+```
+
+\
+
+### 4.2 COVID CFR by State
+
+The data set provides the number of cases by state. Thus it is possible
+to calculate the CFR by state
+
+```{r CFR_state, message=FALSE, warning=FALSE, cache=TRUE}
+#1. Counts of Deaths by State. 
+State_clean <-  US_Dataset %>%
+  group_by(Admin1Name) %>% 
+  group_by(Outcome) 
+
+State_counts  <- US_Dataset %>% 
+  count(Admin1Name, Outcome) 
+
+State_DeathRates <- read.csv("/Users/leonardo/Documents/LSI/2nd_Semester/Data Visualization/Exam_Valdes/Death_Rates.csv")
+
+#2. A column graph is constructd to represent the values of CFR by states. The axes are inverted to have a better representation. 
+
+
+StateDR <- ggplot(State_DeathRates)+
+  geom_col(aes(y= reorder(state_name, rate), x=rate, fill = rate), width = 0.5)+
+  scale_x_continuous(breaks = seq(0, 750, by = 50))+
+  #scale_y_discrete(breaks = NULL)+
+  scale_fill_viridis_c(direction = -1)+
+  labs(x = "CFR by 1000", y = "State") +
+  ggtitle("Case Fatality Rate by COVID in the U.S.A") +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=6.5, hjust=1),
+        panel.grid.major.y = element_blank(),
+        legend.position = "none")
+
+```
+
+##### COVID USA Maps
+
+```{r CFR_Map, message=FALSE, warning=FALSE, cache=TRUE}
+#3. With the previous generated data we can assign the value to each U.S.A. state, to visualize in a color map the CFR by state
+Statemap_CFR <- plot_usmap(data = State_DeathRates, values = c("CFR"="rate"), color = "white", regions = "states") +
+  scale_fill_viridis_c(direction = -1, name = "CFR")+
+  labs(title = "COVID-19 Case Fatality Rates in the U.S.A by states",
+       subtitle = "Case Fatality Rate by 1000 of population. From 03.2020 to 07.2021") + 
+  theme(panel.background=element_blank())
+
+```
+
+\
+
+### 4.3 COVID CFR by Biological Sex
+
+The data set also provides information about the Biological Sex of
+confirmed cases. This allows to explore the CFR based on the Biological
+Sex of the patient\
+
+#### Graphic representation in a Bar Chart
+
+Through a Stacked Bar chart we can compare the number of cases between
+Male and Female groups.
+
+```{r Bar_BS, message=FALSE, warning=FALSE, cache=TRUE}
+#1. Counts of Deaths by Biological Sex. 
+#First, we filter the variable **"Biological Sex"** to maintain only the Female and Male values, leaving out unspecified data. 
+#Then we obtain the counts of the variable Biological Sex and Outcome, with this data the bar graph is created.
+
+BiologicalSex_clean  <- US_Dataset %>% 
+  filter(BiologicalSex == "Male" | BiologicalSex == "Female")  %>% 
+  arrange(PeriodStartDate, BiologicalSex)  %>% 
+  group_by(BiologicalSex) %>% 
+  mutate(numbering = row_number())
+  
+BiologicalSex_counts <-  BiologicalSex_clean %>% count(BiologicalSex, Outcome) 
+
+#2. The package ggplot is used for graphing the data. Here a stacked bar plot is used to represent the counts of Dead and Survival by Biological Sex. 
+
+BioSex_BarGrp <- ggplot (BiologicalSex_counts, aes(x=BiologicalSex, y = n, fill = Outcome)) +
+  geom_col(stat="identity", position = position_stack(reverse = TRUE))+
+  labs(title = "Number of Cases by Biological Sex",x = "Biological Sex", y = "Total Number of cases", fill = "Outcome") +
+  scale_fill_manual(values = c("darkblue","lightblue"), labels = c("Dead", "Survival")) +
+  scale_y_continuous(labels = unit_format( unit = " ", digits = 3))
+
+
+```
+
+\
+
+#### Total Number of COVID cases through Time
+
+The data set gives the opportunity to analyze the cases by Biological
+through time.
+
+```{r Cases_BS, message=FALSE, warning=FALSE, cache=TRUE}
+BiologicalSex_clean$PeriodStartDate <- ymd(BiologicalSex_clean$PeriodStartDate)
+
+
+BioSex_Time <- ggplot(data = BiologicalSex_clean, aes(x = PeriodStartDate, y=numbering))+
+  geom_line(aes(color = BiologicalSex), size = 1) +
+  scale_x_date(limits = as.Date(c("2020-02-08", "2021-07-31")), 
+               date_breaks = "2 months",
+               date_labels = "%b %Y") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
+  ylim (250000, NA) + 
+  scale_color_manual(values = c("#de425b", "#005eb0")) +
+  labs(y = "Total Number of cases", 
+       x = "Date" , 
+       title= "Number of COVID Cases by Gender ",
+       subtitle = "Total Number of COVID cases in the period of 03.2020 to 07.2021")
+
+```
+
+\
+
+#### Is Biological Sex associated with the chance of survival?
+
+```{r Chisqe_BS, message=FALSE, warning=FALSE, cache = TRUE}
+#1. Descriptive analysis to calculate the percentage and counts of deaths 
+
+
+#2. Chi-Square analysis to prove relationship of the Biological Sex and Race.
+#We use Chi-Square test for analyze the categorical variable Outcome based on the Biological Sex
+BioSex_CountsChiSq <-  table(BiologicalSex_clean$BiologicalSex, BiologicalSex_clean$Outcome)
+
+print(BioSex_CountsChiSq)
+
+BioSexChiSqr <-chisq.test(BioSex_CountsChiSq, correct = FALSE)
+print(BioSexChiSqr)
+BioSexChiSqr$expected
+
+
+
+```
+
+\
+
+### 4.4 COVID CFR by Race
+
+This data set stores the number of cases based on Race. However the data
+is reported only for the first trimester of the pandemic period.
+
+##### Bar Graphic View
+
+```{r Bar_Race, message=FALSE, warning=FALSE, cache = TRUE}
+#1. Counts of confirmed cases and deaths by Race. 
+Race_clean <-  US_Dataset %>%
+  filter(Race == "American Indian or Alaska Native" | Race == "Asian" | Race == "Black or African American"| Race == "Multiracial"| Race == "Native Hawaiian or Other Pacific Islander"| Race == "White" | Race == "Unspecified")   %>%
+  arrange(PeriodStartDate)  %>% 
+  group_by(Race) %>% 
+  mutate(numbering = row_number())
+
+Race_counts  <- Race_clean %>% 
+  count(Race, Outcome) 
+
+#2. The package ggplot is used for graphing the data. Here a colum plot is used to represent the counts of Dead and Survival by Race. 
+
+Race_BarGrp <- ggplot (Race_counts, aes(x=Race, y = n, fill = Outcome)) +
+  geom_col(stat="identity", position = position_fill(reverse = TRUE))+
+  labs(title = "Total Number of Cases of COVID-19 by Race", 
+       subtitle = "Total number of cases of COVID-19 with its outcome",
+       x = "Race", 
+       y = "Percentage of Cases", 
+       fill = "Outcome") +
+  scale_fill_manual(values = c("darkblue","lightblue"), labels = c("Dead", "Survival"))+
+  scale_x_discrete(limit = c("American Indian or Alaska Native", "Asian", "Black or African American", "Multiracial", "Native Hawaiian or Other Pacific Islander", "White", "Unspecified"),
+                   labels=c("American Native", "Asian", "Black or African American", "Multiracial", "Pacific Islander", "White" , "Other") )+
+  scale_y_continuous (labels = percent)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+```
+
+##### Is the Race associated with the chance of survival?
+
+```{r ChiSqr_Race, message=FALSE, warning=FALSE, cache = TRUE}
+
+RaceChiSqr<-chisq.test(Race_clean$Outcome, Race_clean$Race, correct = FALSE)
+print(RaceChiSqr)
+
+Observed <- RaceChiSqr$observed
+Expected <- RaceChiSqr$expected
+
+
+```
+
+\
+
+# 5. Results
+
+### 5.1 COVID CFR by Time
+
+The **Case Fatality Rate (CFR)** is based on the number of deaths due to
+a specific cause, in this case the number of deaths caused by COVID-19
+divided by the total number of cases in a weekly period was used. The
+results shows that at the beginning of the pandemic, January to February
+2020, the CFR value was greater than 400 deaths per 1000 cases.
+Afterward, this value diminishes for three months. Then the values rise
+up, achieving its maximal CFR in mid August with approximately 550 CFR.
+Then, for the rest of the time period the CFR is maintained between 300
+and 400 CFR. Finally, during July, 2021 the CFR diminishes until to 300
+CFR
+
+```{r Figure_1, echo=FALSE, message=FALSE, warning=FALSE}
+D2C_ratio
+```
+
+*Figure 1. Death to case Ratio of COVID-19*
+
+### 5.2 COVID CFR by State
+
+In this column graph, we can observe a comparison of the CFR by states.
+The top 5 states had a CFR value over 550 per 1000 cases. The bottom 5
+states had values of under 75 CFR per 1000 cases. The average CFR value
+is 500 deaths by 1000 cases
+
+```{r Fig_2, echo=FALSE, message=FALSE, warning=FALSE}
+StateDR
+```
+
+*Figure 2. Case fatality rate by COVID-19 in the U.S.A by state*
+
+The same values can be shown in a map, as shown in Figure 3. Here each
+state is colored according to the CFR value, to have a refrenece of the
+value the inferior label can be used.
+
+```{r Fig_3, echo=FALSE, message=FALSE, warning=FALSE}
+Statemap_CFR
+```
+
+*Figure 3. COVID-19 Case Fatality Rates in the U.S.A by states*
+
+\
+
+### 5.3 COVID CFR by Biological Sex
+
+Through the count of confirmed cases of COVID-19 and death outcome we
+can create a stacked bar graph as Figure 4. Here we can compare the
+total number of cases between Male and Female groups. Also, it is
+visible the outcome of the confirmed cases. The Female group had a lower
+number of cases than the Male group, additionally, the survival and dead
+ratio is similar. Men had a total of 303 515 cases, from which 229 353
+died, giving a 75% of cases with a negative outcome. Women had a total
+of 279 317 cases, from which 203 714 died, 73% of these cases had a
+negative outcome.
+
+```{r Fig_4, message=FALSE, warning=FALSE}
+BioSex_BarGrp
+```
+
+*Figure 4. Bar Graph of Total Number of Cases by Biological Sex*
+
+In Figure 5, the total number of cases of COVID-19 can be seen as a line
+graph. This one is useful to understand the cases from a quantitative
+perspective. The Male group began with 275000 and ended with 305000
+cases. For the Female group, at the beginning 250000 cases were
+reported, and by the end of the period 280000 cases were confirmed.
+
+```{r Fig_5, message=FALSE, warning=FALSE}
+BioSex_Time
+```
+
+*Figure 5. Line Graph of Total Number of COVID-19 Cases by Biological
+Sex*
+
+Additionally, to prove if here is any relationship between the
+Biological Sex and the Case Fatality rate a Chi-Square test is used.
+Here, the Null Hypothesis (Ho) is "There is no relationship between the
+Case Fatality Rate and Biological Sex". After performing the statistic
+test we obtain the results in Table 1.\
+
+*Table 1. Summary of Chi-Square Test for Biological Sex*
+
+| X-squared |  p-value  |    Ho    |
+|:---------:|:---------:|:--------:|
+|  528.14   | \<2.2e-16 | Accpeted |
+
+The p-value is close to 0, which indicates that the Ho is accepted.
+Thus, There is no relationship between Biological Sex and CFR.
+
+### 5.4 COVID CFR by Race
+
+The data set reports the number of cases and number of deaths by race.
+This data is represented in a column graph Figure 6. Here the scale is
+shown as a percentage, for easily compare between the cases of the
+different groups, due to the different number of size of each group. As
+results, the groups "White" and "African American" present a greater
+than 60% percentage of dead outcome, while the other groups stay below
+50%.
+
+```{r Fig_6, echo=FALSE, message=FALSE, warning=FALSE}
+Race_BarGrp
+```
+
+*Figure 6. Total Number of Cases of COVID-19 by Race*\
+
+To prove if there is any relationship between the Race and the Case
+Fatality rate a Chi-Square test is used. Here, the Null Hypothesis (Ho)
+is "There is no relationship between the Case Fatality Rate and Race".
+After performing the statistic test we obtain the results in Table 2.
+
+*Table 2. Summary of Chi-Square Test for Race*
+
+| X-squared |  p-value  |    Ho    |
+|:---------:|:---------:|:--------:|
+|  326657   | \<2.2e-16 | Accpeted |
+
+The p-value is close to 0, which indicates that the Ho is accepted.
+Thus, There is no relationship between Race and CFR.
+
+# 6. Discussion
+
+### 6.1 COVID CFR by Time
+
+As we can see in Figure 1, there are two peaks, these can be interpreted
+as the two first waves of the pandemic. The first peak ranges from
+January to March, 2020, and the second from June to August, 2020.
+According to Coccia(2021) this may be related to the confinement
+policies. The unknown situation for the whole world made decision making
+complicated, some policies were not strict enough which allowed a
+stronger second wave as seen in the graph. Additionally, the little
+connaissance about a correct treatment led to an increased number of
+deaths. Many incorrect treatments were supplied which increased the
+mortality risk among different vulnerable groups (Iftimie S., et al.,
+2021)
+
+### 6.2 COVID CFR by State
+
+As you can see in Figure 2, Pennsylvania has a CFR of less than 15 by
+1000 cases. This low value can be attributed to the confinement strategy
+managed in this state. The policies stated a permanent lock down and a
+progressive return to normal activities in the state. Each county was
+followed specifically (Husch Blackwell LLP, 2021). This rigorous
+policies may have been the cause of a low CFR. On the other hand, the
+state of Louisiana implemented a more flexible contingency program.
+People was able to leave their house to do run errands, even going to
+restaurants to pick-up food (Office of the Governor, 2020). This
+flexibility on their program may be responsible for the high number of
+CFR cases.
+
+### 6.3 COVID CFR by Biological Sex
+
+The Figure 4, depicts that Male group had a higher number of cases than
+the female group. However, the ratio death over survival is similar. One
+of the causes could be the contact each group have. Even though women
+have higher contact risk, men are the most infected by COVID-19, also
+have a higher mortality rate (Doerre & Doblhammer, 2022).
+
+The increment of cases for men and women is similar, as appreciated in
+Figure 5. However it keeps being higher for men.
+
+To prove if COVID-19 case fatality rate is associated by gender a
+Chi-Square test is used in the data. The results observed in Table 1
+suggests that there is no relationship. Thus, the lower value of case
+count in women may be attributed to some other characteristic, for
+example, the lifestyle of women, and even some genetic factors which
+differs between men and women (Bwire, 2020).
+
+### 6.4 COVID CFR by Race
+
+During the COVID-19 pandemic many conclusions were obtained about how
+and who affects this disease. The race trait was investigated, Figure 6,
+shows a higher percentage of deaths for "Black or African American" and
+"White" groups. This difference can be due to different factors that
+affect each group, from its biology part to ther sociocultural
+environment.
+
+Through a Chi-Square test we can observe that there is no significant
+relationship between race and CFR. However, Clay et al., (2021) states
+that there are many aspects that puts "Black or African American" group
+at higher risk, like accessibility to medicines, transport and social
+health insurance. Thus, the percentage of cases and of deaths in this
+group is higher than others.
+
+# 7. Conclusions
+
+To summarise, the COVID-19 pandemic began with high case fatality rate
+value of 550 deaths per 1000 cases. Which could be attributed to the
+unexpected development of the disease. The second wave of 2020, which
+also presents a high CFR value could be due to the contingency policies.
+
+The effect of different policies between the states played a main role
+into the CFR value. Strict policies reduced the CFR while more flexible
+increased the number. However, there was no protocol to follow at the
+time.
+
+It is interesting to peruse how a disease like COVID-19 affects
+differently to persons depending on different factors. First, the
+Biological Sex of a person can influence on the infection and CFR value,
+probably not by inherent properties of the gender, but the behaviour of
+it and the role it plays on the society. Similarly, this disease
+affected in a different manner to different ethnic groups. Even though
+there may be slight biological differences, the social characteristic
+under which each group lives affects them differently.
+
+In conclusion, the COVID-19 pandemic was hard to face due to the
+inexperience of the humankind to deal with this event. Here, this
+disease affected differently to different groups under different axes,
+but this affection is more related to their social circunstances than
+their biological factor.
+
+# References
+
+-   Bwire, G. M. (2020). Coronavirus: Why men are more vulnerable to
+    covid-19 than women? SN Comprehensive Clinical Medicine, 2(7),
+    874--876. <doi:10.1007/s42399-020-00341-w>
+
+-   Clay, S. L., Woodson, M. J., Mazurek, K., & Antonio, B. (2021).
+    Racial disparities and covid-19: Exploring the relationship between
+    race/ethnicity, personal factors, health access/affordability, and
+    conditions associated with an increased severity of COVID-19. Race
+    and Social Problems, 13(4), 279--291.
+    <doi:10.1007/s12552-021-09320-9>
+
+-   CDC. Measures of Risk - Mortality Frequency Measures.:
+    <https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section3.html> \#
+    Appendix
+
+-   Coccia, M. (2021). The impact of First and second wave of the
+    COVID-19 pandemic in society: Comparative analysis to support
+    control measures to cope with negative effects of future infectious
+    diseases. Environmental Research, 197, 111099.
+    <doi:10.1016/j.envres.2021.111099>
+
+-   Different ways of Plotting U.S Map in R:
+    <https://jtr13.github.io/cc19/different-ways-of-plotting-u-s-map-in-r.html>
+
+-   Doerre, A., & Doblhammer, G. (2022). The influence of gender on
+    covid-19 infections and mortality in Germany: Insights from age- and
+    gender-specific modeling of contact rates, infections, and deaths in
+    the early phase of the pandemic. PLOS ONE, 17(5).
+    <doi:10.1371/journal.pone.0268119>
+
+-   Hu, B., Guo, H., Zhou, P., & Shi, Z.-L. (2020). Characteristics of
+    SARS-COV-2 and COVID-19. Nature Reviews Microbiology, 19(3),
+    141--154. <doi:10.1038/s41579-020-00459-7>
+
+-   Husch Blackwell. (n.d.). Retrieved from
+    <http://www.huschblackwell.com/pennsylvania-state-by-state-covid-19-guidance>
+
+-   Iftimie, S., López-Azcona, A. F., Vallverdú, I., Hernández-Flix, S.,
+    de Febrer, G., Parra, S., ... Castro, A. (2021). First and second
+    waves of coronavirus disease-19: A comparative study in hospitalized
+    patients in Reus, Spain. PLOS ONE, 16(3).
+    <doi:10.1371/journal.pone.0248029>
+
+-   Package 'usmap':
+    <https://cran.r-project.org/web/packages/usmap/usmap.pdf>
+
+-   Office of the Governor. (n.d.). Retrieved from
+    <https://gov.louisiana.gov/home/>
+
+-   Pei, S., Yamana, T. K., Kandula, S., Galanti, M., & Shaman, J.
+    (2021). Burden and characteristics of covid-19 in the United States
+    during 2020. Nature, 598(7880), 338--341.
+    <doi:10.1038/s41586-021-03914-4>
+
+-   MIDAS Coordination Center, Counts of COVID-19 reported in UNITED
+    STATES OF AMERICA: 2019-2021: (version 2.0, April 1, 2018): Project
+    Tycho data release, DOI: 10.25337/T7/ptycho.v2.0/US.840539006
